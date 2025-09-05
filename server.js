@@ -1,9 +1,10 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const path = require("path");
-const { Pool } = require("pg");
-require("dotenv").config();
+// server.js
+require('dotenv').config();
+const express = require('express');
+const { Pool } = require('pg');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,15 +14,13 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname)));
 
-// PostgreSQL connection (Render ka DATABASE_URL use hoga)
+// PostgreSQL connection (Render)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false, // Render ke liye required
-  },
+  ssl: { rejectUnauthorized: false } // important for Render
 });
 
-// Initialize database connection and table
+// Initialize database
 async function initializeDatabase() {
   try {
     await pool.query(`
@@ -36,26 +35,24 @@ async function initializeDatabase() {
         completed_at TIMESTAMP NULL
       )
     `);
-    console.log("Database initialized successfully ✅");
+    console.log("✅ Database initialized successfully");
   } catch (error) {
-    console.error("Database initialization error:", error);
+    console.error("❌ Database initialization error:", error);
     process.exit(1);
   }
 }
 
 // Routes
-
-// Serve the main HTML file
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Get todos for a specific date
-app.get("/api/todos/:date", async (req, res) => {
+app.get('/api/todos/:date', async (req, res) => {
   try {
     const { date } = req.params;
     const result = await pool.query(
-      "SELECT * FROM todos WHERE date = $1 ORDER BY created_at ASC",
+      'SELECT * FROM todos WHERE date = $1 ORDER BY created_at ASC',
       [date]
     );
     res.json(result.rows);
@@ -66,7 +63,7 @@ app.get("/api/todos/:date", async (req, res) => {
 });
 
 // Add a new todo
-app.post("/api/todos", async (req, res) => {
+app.post('/api/todos', async (req, res) => {
   try {
     const { text, date } = req.body;
 
@@ -75,7 +72,7 @@ app.post("/api/todos", async (req, res) => {
     }
 
     const result = await pool.query(
-      "INSERT INTO todos (text, date) VALUES ($1, $2) RETURNING *",
+      'INSERT INTO todos (text, date) VALUES ($1, $2) RETURNING *',
       [text, date]
     );
 
@@ -87,7 +84,7 @@ app.post("/api/todos", async (req, res) => {
 });
 
 // Update todo completion
-app.put("/api/todos/:id/complete", async (req, res) => {
+app.put('/api/todos/:id/complete', async (req, res) => {
   try {
     const { id } = req.params;
     const { completionPercentage, reason } = req.body;
@@ -104,12 +101,8 @@ app.put("/api/todos/:id/complete", async (req, res) => {
 
     const result = await pool.query(
       `UPDATE todos 
-       SET completed = TRUE, 
-           completion_percentage = $1, 
-           reason = $2, 
-           completed_at = CURRENT_TIMESTAMP 
-       WHERE id = $3 
-       RETURNING *`,
+       SET completed = TRUE, completion_percentage = $1, reason = $2, completed_at = CURRENT_TIMESTAMP 
+       WHERE id = $3 RETURNING *`,
       [completionPercentage, reason || null, id]
     );
 
@@ -121,11 +114,11 @@ app.put("/api/todos/:id/complete", async (req, res) => {
 });
 
 // Delete a todo
-app.delete("/api/todos/:id", async (req, res) => {
+app.delete('/api/todos/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    await pool.query("DELETE FROM todos WHERE id = $1", [id]);
+    await pool.query('DELETE FROM todos WHERE id = $1', [id]);
 
     res.json({ message: "Todo deleted successfully" });
   } catch (error) {
@@ -135,19 +128,17 @@ app.delete("/api/todos/:id", async (req, res) => {
 });
 
 // Get statistics for a specific date
-app.get("/api/stats/:date", async (req, res) => {
+app.get('/api/stats/:date', async (req, res) => {
   try {
     const { date } = req.params;
 
     const result = await pool.query(
-      `
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN completed = true THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN completed = false THEN 1 ELSE 0 END) as pending
-      FROM todos 
-      WHERE date = $1
-      `,
+      `SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN completed = true THEN 1 ELSE 0 END) as completed,
+          SUM(CASE WHEN completed = false THEN 1 ELSE 0 END) as pending
+        FROM todos 
+        WHERE date = $1`,
       [date]
     );
 
@@ -163,7 +154,7 @@ async function startServer() {
   await initializeDatabase();
 
   app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
   });
 }
 
